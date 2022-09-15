@@ -15,13 +15,14 @@ msToken := "NGIQYMWDLYQLIEZB"
 
 ; These settings should not change
 global apiVersion := 1
-global msURL := "http://127.0.0.1:8249/state"
+global muteSyncGetStateUrl := "http://127.0.0.1:8249/state"
+global muteSyncToggleMuteUrl := "http://127.0.0.1:8249/toggle-mute"
 global msTokenText := "Token " msToken
 StringCaseSense Off
 
 ; End of configuration settings
 ; ------------------------------------------------------------------------------
-
+  
 
 SetTitleMatchMode, 2 ; 2 = a partial match on the title
 
@@ -47,26 +48,13 @@ return
 
 ; ------------------------------ Functions ------------------------------
 
-ToggleTeamsMute()
-{
-	WinGet, winid, ID, A	; Save the current window ID
-	if !WinExist("Microsoft Teams") ;Yes, every Teams meeting has that in the title bar - even if it's not visible to you
-		return
-	WinActivate ; Without any parameters this activates the previously retrieved window - in this case your meeting
-    Sleep, 10 ; wait a bit
-	Send, ^+M   ; Teams' native Mute shortcut
-    Sleep, 10 ; wait a bit
-    WinActivate ahk_id %winid% ; Restore previous window focus
-	return
-}
-
 
 IsMuted()
 {
 ; Create oHttp object
 oHttp := ComObjCreate("WinHttp.Winhttprequest.5.1")
 ; GET request, synchronous mode
-oHttp.Open("GET", msURL, false)
+oHttp.Open("GET", muteSyncGetStateUrl, false)
 ; Add token header
 oHttp.SetRequestHeader("Authorization", msTokenText)
 ; Add API version header
@@ -116,4 +104,30 @@ catch e
 }
 
 return isMuted
+}
+
+ToggleTeamsMute()
+{
+; Create oHttp object
+oHttp := ComObjCreate("WinHttp.Winhttprequest.5.1")
+; GET request, synchronous mode
+oHttp.Open("POST", muteSyncToggleMuteUrl, false)
+; Add token header
+oHttp.SetRequestHeader("Authorization", msTokenText)
+; Add API version header
+oHttp.SetRequestHeader("x-mutesync-api-version", apiVersion)
+; send Request
+try
+{
+	oHttp.send()
+	; Wait for the response for 5 seconds
+	oHttp.WaitForResponse(5)
+	responseText := oHttp.responseText
+}
+catch e
+{
+	return
+}
+
+return
 }
